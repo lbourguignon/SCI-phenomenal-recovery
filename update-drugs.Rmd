@@ -1,0 +1,535 @@
+---
+title: "Update on drugs prescribed in phenomenal recovery cohort"
+author: "Lucie Bourguignon"
+date: "2023-05-31"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(gridExtra)
+library(grid)
+library(ggplot2)
+library(lattice)
+library(plyr)
+library(dplyr)
+library(tidyr)
+library(ggraph)
+library(tidygraph)
+df_window.1.4 <- read.csv('/Volumes/INANL/45_Lucie_Bourguignon/1_Data/1_Sygen/df_window.1.4.csv')
+ID_norecovry <- df_window.1.4$new_PTID[df_window.1.4$rec_AIS_motor_imp == 'No recovery']
+ID_recovery <- df_window.1.4$new_PTID[df_window.1.4$rec_AIS_motor_imp == 'Recovery']
+```
+
+## Background
+
+We discussed last week that I should start working on the drugs prescribed to the patients wxhibiting a phenomenal recovery. As a start, we decided to focus on:
+
+- statins
+- drugs with negative effects reported in our drug review: morphine, ethanol, caffeine, pregabalin
+- methylprednisolone (MP) (more specifically, was the first dose given within in the first 4h following SCI?)
+- drugs that the patients with phenomenal recovery have in common
+
+## Statins
+
+We don't have any statins prescribed in the Sygen data as they only entered the market in the 90's. Statins are part of our drugs of interest for the drug review as they were prescribed in the SCIRehab dataset.
+
+## Drugs with negative effects (drug review)
+### Caffeine
+
+No patient with caffeine prescription.
+
+### Ethanol
+
+One patient with ethanol prescribed in the Sygen, but not a severe injury (so also not a phenomenal recovery).
+
+### Pregabalin
+
+Similar situation as for the statins: none prescribed in the Sygen data.
+
+### Morphine
+
+6 patients with morphine prescribed in the first 30 days after injury (see below).
+
+## Methylprednisolone
+
+```{r, echo=F, warning=FALSE}
+ggplot(df_window.1.4, aes(x=rec_AIS_motor_imp, y=I_MPM)) + 
+  geom_violin(trim=FALSE) + 
+  geom_dotplot(binaxis='y', stackdir='center', dotsize=0.5, binwidth = 0.2)+
+  labs(x = 'Recovery group', y = 'Time between injury and first MP dose (hours)')
+```
+
+This plot shows the time at which the first dose of MP was received after injury, separately for the groups with no phenomenal recovery (left) and phenomenal recovery (right).
+
+```{r, echo=T}
+time_MP_no_recovery <- df_window.1.4 %>% filter(rec_AIS_motor_imp == 'No recovery') %>% select(I_MPM)
+time_MP_recovery <- df_window.1.4 %>% filter(rec_AIS_motor_imp == 'Recovery') %>% select(I_MPM)
+ks.test(as.vector(time_MP_no_recovery)$I_MPM, as.vector(time_MP_recovery)$I_MPM)
+```
+
+There is no statistical difference in the distribution of time when MP was first received when comparing the recovery vs non-recovery groups.
+
+## Common drugs within the recovery group
+
+```{r, echo=FALSE}
+# 109702-ABCD
+################################################################################
+pat1 <- c("codeine", "fentanyl", "ceftriaxone", "potassium_chloride", "glycopyrrolate", # (surgery),
+"acetaminophen_codeine", "acetaminophen", "lorazepam", "bismuth_subsalicylate",
+"vecuronium bromide", "propofol", "lidocaine", "midazolam", "neostigmine",
+"trimethobenzamide", "pancuronium_bromide", "vancomycin", "sucralfate", "ephedrine",
+"diazepam", "hydroxyzine", "metoclopramide")
+################################################################################
+
+# 129701-ABC
+################################################################################
+pat2 <- c("heparin", "warfarin", "famotidine", "ceftriaxone", "potassium_chloride", "acetaminophen",
+"fludrocortisone", "potassium", "sulfamethoxazole_trimethoprim", "nitrofurantoin",
+"ephedrine", "diazepam", "ciprofloxacin")
+################################################################################
+
+# 19106-ABCDEFG
+################################################################################
+pat3 <- c("ketorolac", "acetaminophen", "gentamicin", "lorazepam", "furosemide", "cefotaxime",
+"albumin", "vitamin_k", "morphine", "rbc", "cefazolin", "sulfamethoxazole_trimethoprim",
+"ranitidine", "vancomycin", "aminophylline", "metoclopramide")
+
+# morphine: 2.4 per day for first 5 days (day 0 to day 4)
+################################################################################
+
+# 19702-AB ## Substring name
+################################################################################
+pat4 <- c("acetaminophen_oxycodone", "pentobarbital", "famotidine", "ketorolac", "acetaminophen", 
+"alprazolam", "midazolam", "zolpidem", "morphine", "cyproheptadine", "bisacodyl",
+"cefazolin", "ibuprofen", "sucralfate", "ciprofloxacin")
+
+# morphine: day 2 to 6, 96 per day
+################################################################################
+
+# 199702-ABCDEFGHI
+################################################################################
+pat5 <- c("heparin", "ceftazidime", "nafcillin", "enoxaparin", "sodium_polystyrene_sulfonate",
+"fresh_frozen_plasma", "calcium gluceptate", "potassium_chloride", "glycopyrrolate", # (pre-medication)
+"insulin", "mannitol", "gentamicin", "dexamethasone", "cefotaxime", "midazolam",
+"naloxone", "albumin", "vitamin_k", "morphine", "calcium_carbonate", "bisacodyl", "rbc",
+"magnesium_sulfate", "ranitidine", "pancuronium_bromide", "vancomycin", "ciprofloxacin",
+"metoclopramide")
+
+# morphine: day 20 to day 24, 19.2 per day
+################################################################################
+
+# 199709-ABCDEFGHI
+################################################################################
+pat6 <- c("heparin", "ceftazidime", "famotidine", "promethazine", "piperacillin", "gentamicin",
+"propofol", "vitamin_b1", "midazolam", "albumin", "vitamin_k", "rbc",
+"sulfamethoxazole_trimethoprim", "omeprazole", "sodium_phosphates",
+"pancuronium_bromide", "vancomycin", "sucralfate", "aminophylline", "ciprofloxacin",
+"methylprednisolone_sodium_succinate")
+################################################################################
+
+# 239107-ABCDEF
+################################################################################
+pat7 <- c("metronidazole", "enoxaparin", "clindamycin", "famotidine", "saline", "ketorolac",
+"promethazine", "ceftriaxone", "chloral_hydrate", "acetaminophen", "gentamicin",
+"ticarcillin", "amitriptyline", "lorazepam", "vecuronium bromide", "midazolam",
+"zolpidem", "acetaminophen_hydrocodone", "cefazolin", "sulfamethoxazole_trimethoprim",
+"vancomycin", "ofloxacin", "ibuprofen", "oxybutynin", "metoclopramide")
+################################################################################
+
+# 7104-ABC
+################################################################################
+pat8 <- c("heparin", "ampicillin", "famotidine", "ceftriaxone", "acetaminophen", "gentamicin",
+"amoxicillin", "amoxicillin_and_clavulanate_potassium", "morphine", "pseudoephedrine",
+"vancomycin", "tinzaparin_sodium")
+
+# morphine: day 0 to day 5 - 11, 11, 11, 16.5, 15, 9
+################################################################################
+
+# 7111-ABCDEF 
+################################################################################
+pat9 <- c("heparin", "enoxaparin", "clindamycin", "famotidine", "potassium_chloride",
+"glycopyrrolate", "piperacillin", "sodium_chloride", "acetaminophen_codeine",
+"acetaminophen", "diphenhydramine", "gentamicin", "fludrocortisone", "lorazepam",
+"furosemide", "midazolam", "morphine", "rbc", "magnesium_sulfate", "clonidine",
+"vancomycin", "nitrofurantoin", "hydroxyzine", "epinephrine_sulfate", "ciprofloxacin",
+"metoclopramide")
+
+# morphine: day 3 to day 13, 72 per day
+################################################################################
+
+# 99109-ABCDEFGH
+################################################################################
+pat10 <- c("fentanyl", "influenza_vaccine", "heparin", "potassium_phosphate", "ceftazidime",
+"metronidazole", "nafcillin", "enoxaparin", "clindamycin", "ketorolac", "erythromycin",
+"ceftriaxone", "acetaminophen_codeine", "diphenhydramine", "gentamicin",
+"vecuronium bromide", "vitamin_b1", "midazolam", "vitamin_k", "cefazolin", "ranitidine",
+"vancomycin", "ofloxacin", "ibuprofen")
+################################################################################
+
+# 99704-ABCDEF
+################################################################################
+pat11 <- c("fentanyl", "heparin", "potassium_phosphate", "potassium_chloride", "acetaminophen",
+"diphenhydramine", "gentamicin", "lorazepam", "cisapride", "midazolam", "morphine", "rbc",
+"pseudoephedrine", "magnesium_sulfate", "atropine", "ranitidine", "pancuronium_bromide",
+"vancomycin", "thiopental", "ciprofloxacin", "cefazolin")
+
+# morphine: day 1 to day 6, 22.5 per day
+################################################################################
+
+x <- c(1:11)
+y <- unique(c(pat1, pat2, pat3, pat4, pat5, pat6, pat7, pat8, pat9, pat10, pat11))
+data <- expand.grid(X=x, Y=y)
+data$value <- 0
+list_drug_pat <- list(pat1, pat2, pat3, pat4, pat5, pat6, pat7, pat8, pat9, pat10, pat11)
+
+for (i in x){
+  for (j in y){
+    list_temp <- list_drug_pat[i]
+    if (j %in% list_temp[[1]]){
+      data$value[data$X == i & data$Y == j] <- 1
+    }
+  }
+}
+
+order_drugs <- data %>% group_by(Y) %>% 
+  summarise(freq = sum(value)) %>% 
+  arrange(desc(freq))
+
+data$Y <- factor(data$Y, levels = order_drugs$Y)
+
+order_patients <- data %>% group_by(X) %>% 
+  summarise(freq_X = sum(value)) %>% 
+  arrange(desc(freq_X))
+
+data$X <- factor(data$X, levels = order_patients$X)
+```
+
+```{r, echo=FALSE, out.width="100%"}
+####### Heatmaps #######
+# ALL DRUGS PRESCRIBED TO 11 PHENOMENAL RECOVERIES
+ggplot(data, aes(Y, factor(X), fill = factor(value))) + 
+  geom_tile(color = "white") +
+  coord_equal() + 
+  scale_fill_manual(values = c("#dedede", "#072b89")) +
+  labs(y = 'Patient number', x = 'Drug prescribed') +
+  guides(fill=guide_legend(title="Drug prescribed\n1=yes, 0=no")) +
+  theme(
+    axis.text.x = element_text(
+      angle = 90,
+      hjust = 1,
+      vjust = 0.5
+  ))+
+  theme(legend.position="bottom")
+```
+
+This plot shows all the drugs that were prescribed to at least 1 of the 11 patients with a phenomenal recovery **in the first year after injury**. 
+Y-axis is ordered from patient with the most unique drugs prescribed at the bottom to least unique drugs prescribed at the top.
+X-axis is ordered from highest prevalence to lowest prevalence in the 11 phenomenal recovery, from left to right
+
+Looking more closely at the drugs that were prescribed in the majority of the patients (>5), **in the first year after injury** (left) or the same drugs **in the first 30 days after injury** (right)
+
+```{r, echo=F}
+setwd('/Volumes/INANL/9_Catherine_Jutzeler/1_Studies/1_Drugs/Dose_time_per_Drug')
+vancomycin_master <- read.csv('./vancomycin/vancomycin_wide_format_unique_ID.csv')
+acetaminophen_master <- read.csv('./acetaminophen/acetaminophen_wide_format_unique_ID.csv')
+midazolam_master <- read.csv('./midazolam/midazolam_wide_format_unique_ID.csv')
+gentamicin_master <- read.csv('./gentamicin/gentamicin_wide_uniqueID.csv')
+heparin_master <- read.csv('./heparin/heparin_wide_uniqueID.csv')
+famotidine_master <- read.csv('./famotidine/famotidine_wide_format_unique_ID.csv')
+ciprofloxacin_master <- read.csv('./ciprofloxacin/ciprofloxacin_wide_format_unique_ID.csv')
+morphine_master <- read.csv('./morphine/morphine_wide_unique_ID.csv')
+
+list_master_files <- list(vancomycin_master, acetaminophen_master, midazolam_master,
+                     gentamicin_master, heparin_master, famotidine_master,
+                     ciprofloxacin_master, morphine_master)
+list_names <- levels(data$Y)[1:8]
+
+list_drug_11 <- c()
+list_ID_11 <- c()
+list_sum_11 <- c()
+
+list_drug_norecovery <- c()
+list_ID_norecovery <- c()
+list_sum_norecovery <- c()
+
+for (drug_count in c(1:length(list_master_files))){
+  drug_name <- list_names[drug_count]
+  drug <- list_master_files[drug_count][[1]]
+  #drug <- dplyr::select(drug, -c(X))
+  drug_30 <- select(drug, c(2:which(colnames(drug)=="X30"))) %>% replace(is.na(.), 0)
+  drug_sub_11 <- drug_30 %>% dplyr::filter(NEW_ID %in% ID_recovery)
+  drug_sub_norecovery <- drug_30 %>% dplyr::filter(NEW_ID %in% ID_norecovry)
+  
+  drug_sub_11_sum <- drug_sub_11[,-c(1)] %>% 
+    rowwise() %>% 
+    dplyr::mutate(rowsum = sum(c_across(everything()), na.rm = T))
+  
+  drug_sub_norecovery_sum <- drug_sub_norecovery[,-c(1)] %>% 
+    rowwise() %>% 
+    dplyr::mutate(rowsum = sum(c_across(everything()), na.rm = T))
+  
+  for (i in c(1:dim(drug_sub_11_sum)[1])){
+    list_drug_11 <- c(list_drug_11, drug_name)
+    list_ID_11 <- c(list_ID_11, drug_sub_11$NEW_ID[i])
+    list_sum_11 <- c(list_sum_11, drug_sub_11_sum$rowsum[i])
+  }
+  
+  for (i in c(1:dim(drug_sub_norecovery_sum)[1])){
+    list_drug_norecovery <- c(list_drug_norecovery, drug_name)
+    list_ID_norecovery <- c(list_ID_norecovery, drug_sub_norecovery$NEW_ID[i])
+    list_sum_norecovery <- c(list_sum_norecovery, drug_sub_norecovery_sum$rowsum[i])
+  }
+}
+
+df_11_values <- data.frame(list_ID_11, list_drug_11, list_sum_11)
+colnames(df_11_values) <- c('ID', 'drug', 'total_dose')
+
+df_norecovery_values <- data.frame(list_ID_norecovery, list_drug_norecovery, list_sum_norecovery)
+colnames(df_norecovery_values) <- c('ID', 'drug', 'total_dose')
+
+df_11_values_complete_binary <- df_11_values %>% 
+  complete(ID, drug) %>% 
+  replace(is.na(.), 0) %>%
+  dplyr::mutate(binary30 = ifelse(total_dose > 0, 1, 0))
+
+df_norecovery_values_complete_binary <- df_norecovery_values %>% 
+  complete(ID, drug) %>% 
+  replace(is.na(.), 0) %>%
+  dplyr::mutate(binary30 = ifelse(total_dose > 0, 1, 0))
+
+df_norecovery_values_complete_binary$drug <- factor(df_norecovery_values_complete_binary$drug, 
+                                            levels = order_drugs$Y)
+
+df_11_values_complete_binary$ID <- plyr::mapvalues(df_11_values_complete_binary$ID, 
+                                             from=c("109702-ABCD", "129701-ABC", 
+                                                    "19106-ABCDEFG", "19702-AB",
+                                                    "199702-ABCDEFGHI",
+                                                    "199709-ABCDEFGHI",
+                                                    "239107-ABCDEF", "7104-ABC",
+                                                    "7111-ABCDEF", "99109-ABCDEFGH",
+                                                    "99704-ABCDEF"), 
+                                             to=c(1:11))
+
+df_11_values_complete_binary$drug <- factor(df_11_values_complete_binary$drug, 
+                                            levels = order_drugs$Y)
+
+df_11_values_complete_binary$ID <- factor(df_11_values_complete_binary$ID, 
+                                            levels = order_patients$X)
+
+```
+
+
+```{r, echo=F, fig.show="hold", out.width="100%"}
+# DRUGS PRESCRIBED TO MAJORITY OF 11 PHENOMENAL RECOVERIES (>=6)
+p_1year <- data %>%
+  group_by(Y) %>%
+  filter(sum(value == 1) >= 6) %>% 
+  ggplot(aes(Y, factor(X), fill = factor(value))) + 
+  geom_tile(color = "white") +
+  coord_equal() + 
+  scale_fill_manual(values = c("#dedede", "#072b89")) +
+  labs(y = 'Patient number', x = 'Drug prescribed') +
+  guides(fill=guide_legend(title="Drug prescribed\n1=yes, 0=no"))+
+  theme(legend.position="bottom")+
+  theme(
+    axis.text.x = element_text(
+      angle = 90,
+      hjust = 1,
+      vjust = 0.5
+  ))
+
+p_30days <- df_11_values_complete_binary %>%
+  ggplot(aes(drug, factor(ID), fill = factor(binary30))) + 
+  geom_tile(color = "white") +
+  coord_equal() + 
+  scale_fill_manual(values = c("#dedede", "#072b89")) +
+  labs(y = 'Patient number', x = 'Drug prescribed') +
+  guides(fill=guide_legend(title="Drug prescribed\n1=yes, 0=no")) +
+  theme(legend.position="bottom")+
+  theme(
+    axis.text.x = element_text(
+      angle = 90,
+      hjust = 1,
+      vjust = 0.5
+  ))
+
+grid.arrange(p_1year, p_30days, ncol=2)
+```
+
+We have 8 drugs that were prescribed to at least 6 of the 11 phenomenal recovery patients in the first 1 year after injury:
+
+- 3 antibiotics: vancomycin, gentamicin, and ciprofloxacin
+- 2 pain-related: acetaminophen, and morphine
+- 1 anticoagulant: heparin
+- 1 sedative: midazolam
+- 1 anti-reflux: famotidine
+
+We can note that for all patients who received acetaminophen, morphine (pain) and midazolam (sedative), there were prescribed in the first 30 days after injury.
+In comparison, ciprofloxacin (antibiotic, often used for UTIs) was mainly prescribed after the first 30 days (only 1 patient with it prescribed in the first 30 days).
+
+### Comparison with the cohort with severe SCI but no phenomenal recovery
+
+Similarly as before, we can display which one of the 8 drugs defined above where prescribed to the cohort with no phenomenal recovery.
+
+```{r, echo=F, fig.show="hold", out.width="100%"}
+# DRUGS PRESCRIBED TO MAJORITY OF 11 PHENOMENAL RECOVERIES (>=6)
+
+df_norecovery_values_complete_binary %>%
+  ggplot(aes(factor(ID), drug, fill = factor(binary30))) + 
+  geom_tile(color = "white") +
+  coord_equal() + 
+  scale_fill_manual(values = c("#dedede", "#072b89")) +
+  labs(x = 'Patient number', y = 'Drug prescribed') +
+  guides(fill=guide_legend(title="Drug prescribed\n1=yes, 0=no")) +
+  theme(legend.position="bottom")+
+  theme(axis.ticks.x = element_blank(),
+        axis.text.x = element_blank())
+```
+
+However, since the number of patients is a lot bigger in the cohort, the plot is not very informative.
+
+Instead, we can display this information in a graph.
+
+```{r, echo=F, fig.show="hold", out.width="100%", warning=FALSE}
+# DRUGS PRESCRIBED TO MAJORITY OF 11 PHENOMENAL RECOVERIES (>=6)
+
+make_df_graph <- function(data){
+  df_network <- data.frame(c(1:length(unique(data$ID))))
+  colnames(df_network) <- c('ID')
+  df_network$drugs <- 0
+  
+  list_ID_11 <- c()
+  list_drugs_11 <- c()
+  for (i in c(1:length(unique(data$ID)))){
+    temp_list <- c()
+    list_ID_11 <- append(list_ID_11, unique(data$ID)[i])
+    temp_id <- data %>% 
+      dplyr::filter(ID == unique(data$ID)[i])
+    for (d in unique(data$drug)){
+      temp_drug <- temp_id %>% 
+        dplyr::filter(drug == d)
+      if (temp_drug$binary30[1] == 1){
+        temp_list <- append(temp_list, d)
+      }
+    }
+    df_network$drugs[i] <- paste(temp_list, collapse=" ")
+  }
+  
+  out <- crossprod(table(subset(stack(setNames(lapply(strsplit(df_network$drugs, 
+                                                               "[][]| \\s*"), trimws), 
+                                               df_network$ID))[2:1], nzchar(values))))
+  diag(out) <- 0
+  
+  out2 <-  subset(as.data.frame.table(out))
+  row.names(out2) <- NULL
+  colnames(out2) <- c("Source", "Target", "value")
+  
+  out2 <- out2 %>% 
+   mutate(value = value / length(unique(data$ID)))
+  
+  return(out2)
+}
+
+make_graph <- function(out2, df_11_values_complete_binary){
+  # 1. Node list
+  
+  # Create source
+  source <- out2 %>% 
+    dplyr::distinct(Source) %>%
+    dplyr::rename(label = Source)
+  
+  # Create target
+  target <- out2 %>% 
+    dplyr::distinct(Target) %>%
+    dplyr::rename(label = Target)
+  
+  # To create a single dataframe with a column with the unique locations we need to use a full join
+  nodes <- dplyr::full_join(source, target, by = "label")
+  
+  # To have unique IDs for each city, we add an “id” column
+  nodes <- nodes %>% tibble::rowid_to_column("id")
+  
+  temp_prevalence <- df_11_values_complete_binary %>%
+    dplyr::group_by(drug) %>%
+    dplyr::mutate(sum = sum(binary30 / length(unique(df_11_values_complete_binary$ID)))) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(drug, sum)
+  
+  nodes2 <- merge(nodes, temp_prevalence[1:8,], by.x = "label", by.y = "drug")
+  
+  # 2. Edge list
+  edge.data <- out2 %>% 
+    dplyr::group_by(Source, Target) %>%
+    dplyr::summarise(weight = value) %>% 
+    dplyr::ungroup()
+  
+  edges <- edge.data %>% 
+    dplyr::left_join(nodes, by = c("Source" = "label")) %>% 
+    dplyr::rename(from = id) %>% 
+    dplyr::left_join(nodes, by = c("Target" = "label")) %>% 
+    dplyr::rename(to = id) %>% 
+    dplyr::select(from, to, weight)
+  
+  # 3. Creating network objects
+  set.seed(100)
+  
+  igraph_layouts <- c('star', 'circle', 'gem', 'dh', 'graphopt', 'grid', 'mds', 
+                      'randomly', 'fr', 'kk', 'drl', 'lgl')
+  
+  color_list <- c("#FFA500", "#EE6677", "#228833", "#4477AA", "#4B0082")
+  
+  g <- tbl_graph(nodes2, edges, directed = FALSE)%>%
+    dplyr::mutate(degree = sum)%>%
+    ggraph(layout = 'linear', circular = TRUE) +
+    geom_edge_link2(aes(
+      width = weight),
+      color='gray',
+      alpha = 0.8)+
+    scale_edge_width(range = c(0, 1)) +
+    geom_node_point(aes(size = degree), color='red') +
+    geom_node_text(aes( 
+      label = label), repel = TRUE, 
+      max.overlaps = getOption("ggrepel.max.overlaps", default = 100), family = "Times") +
+    theme_graph(title_size = 18,
+                title_face = "bold",
+                title_margin = 10)
+  return (g)
+}
+
+out_11 <- make_df_graph(df_11_values_complete_binary)
+g_11 <- make_graph(out_11, df_11_values_complete_binary)
+g_11 <- g_11 + ggtitle('Phenomenal recovery group')
+
+out_norecovery <- make_df_graph(df_norecovery_values_complete_binary)
+g_norecovery <- make_graph(out_norecovery, df_norecovery_values_complete_binary)
+g_norecovery <- g_norecovery + ggtitle('Non phenomenal recovery group')
+
+grid.arrange(g_11, g_norecovery, ncol=2)
+```
+
+Here the size of the nodes represents the proportion of patients in the respective cohorts that received a certain drug.
+The width of the edges represents the proportion of patients that received the 2 linked drugs.
+Here we are considering drugs given in the first 30 days after injury.
+
+The corresponding numbers are:
+
+```{r, echo=F, fig.show="hold", out.width="100%", warning=FALSE}
+
+## Prevalence of the 8 drugs in phenomenal recovery group
+head(df_11_values_complete_binary %>%
+     dplyr::group_by(drug) %>%
+     dplyr::mutate(number = sum(binary30)) %>%
+     dplyr::mutate(proportion = sum(binary30 / length(unique(df_11_values_complete_binary$ID)))) %>%
+     dplyr::ungroup() %>%
+     dplyr::select(drug, number, proportion), n=8)
+
+## Prevalence of the 8 drugs in phenomenal recovery group
+head(df_norecovery_values_complete_binary %>%
+     dplyr::group_by(drug) %>%
+     dplyr::mutate(number = sum(binary30)) %>%
+     dplyr::mutate(proportion = sum(binary30 / length(unique(df_norecovery_values_complete_binary$ID)))) %>%
+     dplyr::ungroup() %>%
+     dplyr::select(drug, number, proportion), n=8)
+```
+
